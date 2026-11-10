@@ -31,7 +31,7 @@ What it must do:
    never looks like nothing happened. Skip photos already on the Pi.
 4. Accept every photo type: shrink each photo ON THE PHONE (decode with
    <img> for correct rotation, draw onto a canvas at max 1920px, JPEG
-   ~0.86) before sending. Send the original only if the phone can't
+   ~0.92) before sending. Send the original only if the phone can't
    decode it. Files that can't be read at all (iCloud-only photos, 0
    bytes) are skipped quietly and counted. A broken photo must never stop
    the others. Wifi drops: wait and retry by itself, then offer "Send the

@@ -57,7 +57,7 @@ Phone side (index.html):
   ready" card shows while the phone does that.
 - Each photo is decoded with an <img> (gets EXIF rotation right, and
   opens HEIC on Safari, WebP, GIF, AVIF, PNG...), drawn to a canvas at max
-  1920px, sent as JPEG q0.86. 3.7 MB -> ~0.3 MB. The next photo is shrunk
+  1920px, sent as JPEG q0.92. 3.7 MB -> ~0.4 MB. The Pi saves the TV copy at q92 too. The next photo is shrunk
   while the current one uploads.
 - If the browser can't decode it, the original is sent and the Pi tries
   (Pillow, then heif-dec). If the file can't even be READ (iCloud-only

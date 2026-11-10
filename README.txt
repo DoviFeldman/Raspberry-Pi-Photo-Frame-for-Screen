@@ -37,6 +37,7 @@ systemd/         the three background services
 
 Speed (measured on the real Pi Zero W over a phone hotspot)
 -------------------------------------------------------------
-100 full-size phone photos (358 MB) were sent in 30 seconds, because each
-photo is shrunk to TV size on the phone first (28 MB total). The Pi then
+100 full-size phone photos (358 MB) were sent in 40 seconds, because each
+photo is shrunk to TV size on the phone first (44 MB total, JPEG quality
+92%). The Pi then
 gets each one ready for the TV in about 3 seconds, in the background.

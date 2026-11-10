@@ -108,7 +108,7 @@ def process_photo(photo_id, src):
     bg.paste(fit, ((SCREEN_W - fit.width) // 2, (SCREEN_H - fit.height) // 2))
 
     tmp = os.path.join(DISPLAY, "." + photo_id + ".jpg")
-    bg.save(tmp, "JPEG", quality=88)
+    bg.save(tmp, "JPEG", quality=92)
     thumb = fit.copy()
     thumb.thumbnail((360, 360))
     thumb.save(os.path.join(THUMBS, photo_id + ".jpg"), "JPEG", quality=78)
