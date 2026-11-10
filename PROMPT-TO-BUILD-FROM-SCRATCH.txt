@@ -1,0 +1,61 @@
+PROMPT TO BUILD THIS FROM SCRATCH
+=================================
+Copy everything between the lines into an AI coding agent (one that can
+write files and run commands).
+
+------------------------------------------------------------------------
+Build a family photo slideshow for a Raspberry Pi Zero W running
+Raspberry Pi OS Lite 32-bit (NetworkManager). Python 3 standard library
+plus Pillow from apt only (no pip). One plain HTML/JS page. systemd
+services. An install.sh and an update.sh.
+
+What it must do:
+1. The Pi broadcasts its own open, visible wifi named "raspberry pi tv"
+   (lowercase, no password) on a second virtual interface (uap0) of the
+   same radio, with hostapd + dnsmasq. At the same time wlan0 stays a
+   normal client that auto-joins saved networks (my phone hotspot) through
+   NetworkManager. The Zero W has ONE 2.4 GHz radio, so the access point
+   must always be moved to the hotspot's channel.
+2. Captive portal: dnsmasq answers every DNS name with the Pi's IP and
+   sends DHCP option 114, so joining the wifi pops up the upload page on
+   iPhone and Android. Answer the OS connectivity checks with redirects,
+   plus a "Stay connected" button after which that phone's checks get
+   real success answers. The site must also work from the hotspot side at
+   http://pitv.local (avahi; listen on IPv6 and IPv4).
+3. Upload page for non-technical people (mom, grandma): one huge "Choose
+   photos" button, multiple selection, works on iPhone and Android, any
+   number of photos (100+). Show: X of Y sent, a progress bar, time left,
+   time so far, speed, and thumbnails of the last 5 photos sent (made
+   from the phone's own copy, so no extra wifi). Show a "getting your
+   photos ready" message while the phone prepares the selection, so it
+   never looks like nothing happened. Skip photos already on the Pi.
+4. Accept every photo type: shrink each photo ON THE PHONE (decode with
+   <img> for correct rotation, draw onto a canvas at max 1920px, JPEG
+   ~0.86) before sending. Send the original only if the phone can't
+   decode it. Files that can't be read at all (iCloud-only photos, 0
+   bytes) are skipped quietly and counted. A broken photo must never stop
+   the others. Wifi drops: wait and retry by itself, then offer "Send the
+   rest".
+5. The Pi prepares each photo in a separate long-lived low-priority helper
+   process (some image libraries crash with "illegal instruction" on the
+   ARMv6 CPU, e.g. libwebp - that must never kill the web server).
+   Fall back to heif-dec (libheif-examples) for HEIC/AVIF. Unreadable
+   files are deleted. Pause photo prep while uploads are arriving (one
+   CPU core).
+6. TV: draw full-screen to /dev/fb0 directly (no desktop), each photo
+   fitted on a darkened blurred copy of itself, 8 seconds each (setting).
+   Support 16 and 32 bit framebuffers. Remember the current photo after
+   every slide; after a reboot continue 5 photos BEFORE where it stopped,
+   never from the beginning. New uploads show next. With no photos, show
+   a welcome screen explaining how to join the wifi. Keep HDMI on even
+   if the TV is plugged in after boot; hide the console cursor and text.
+7. Password "laura" protects only viewing the photos (gallery with view,
+   save, delete) and the settings page (add/remove wifis with nmcli from
+   a list of nearby networks, seconds per photo). Uploading needs no
+   password.
+8. Survive power cuts: atomic JSON writes, partial uploads cleaned at
+   start, persistent journald logs capped at 50 MB.
+Test everything on a normal computer first (env vars for the data folder,
+port and a fake framebuffer file), then on the Pi. Write a plain-text
+README, a setup guide for humans, and a guide for AI agents.
+------------------------------------------------------------------------

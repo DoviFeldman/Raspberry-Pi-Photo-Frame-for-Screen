@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d1a2f">
+<title>Photo TV</title>
+<style>
+  :root {
+    --bg: #1d1a2f; --card: #2a2642; --card2: #36315a; --text: #fbf7ff; --muted: #b9b2d6;
+    --accent: #ffb347; --accent2: #ff7a59; --good: #5ed39a; --bad: #ff6b6b; --radius: 22px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 18px 16px 110px; }
+  h1 { font-size: 30px; margin: 8px 0 2px; letter-spacing: -0.5px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+  .hidden { display: none !important; }
+  button, .btn { font: inherit; border: 0; border-radius: 16px; padding: 14px 18px; cursor: pointer;
+    background: var(--card2); color: var(--text); font-weight: 600; }
+  button:active { transform: scale(0.98); }
+  .big { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 30px 18px;
+    font-size: 22px; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #2b1a00;
+    border-radius: var(--radius); box-shadow: 0 10px 30px rgba(255, 122, 89, .25); }
+  .big small { font-size: 15px; font-weight: 500; opacity: .8; }
+  .big .icon { font-size: 44px; line-height: 1; }
+  input[type=file] { display: none; }
+  input[type=text], input[type=password], input[type=number] { font: inherit; width: 100%; padding: 14px 16px;
+    border-radius: 14px; border: 2px solid var(--card2); background: var(--bg); color: var(--text); }
+  input:focus { outline: none; border-color: var(--accent); }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .row > * { flex: 1; }
+  .bar { height: 14px; background: var(--bg); border-radius: 99px; overflow: hidden; margin: 12px 0; }
+  .bar div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 99px; transition: width .3s; }
+  .count { font-size: 34px; font-weight: 800; letter-spacing: -1px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .stat { background: var(--bg); border-radius: 14px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-size: 19px; }
+  .stat span { color: var(--muted); font-size: 13px; }
+  .recent { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 12px; }
+  .recent img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; background: var(--bg);
+    animation: pop .35s ease; }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } }
+  .msg { padding: 12px 14px; border-radius: 14px; background: var(--card2); margin-top: 10px; }
+  .msg.good { background: rgba(94, 211, 154, .18); color: var(--good); }
+  .msg.bad { background: rgba(255, 107, 107, .15); color: var(--bad); }
+  .muted { color: var(--muted); font-size: 15px; }
+  nav { position: fixed; left: 0; right: 0; bottom: 0; background: rgba(29, 26, 47, .94);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    display: flex; justify-content: center; gap: 6px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); }
+  nav button { flex: 1; max-width: 180px; background: none; color: var(--muted); padding: 8px 4px;
+    display: flex; flex-direction: column; align-items: center; font-size: 13px; }
+  nav button .i { font-size: 24px; }
+  nav button.on { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--card); }
+  .viewer { position: fixed; inset: 0; background: #000; z-index: 10; display: flex; flex-direction: column; }
+  .viewer img { flex: 1; min-height: 0; width: 100%; object-fit: contain; }
+  .viewer .row { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+  .net { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0;
+    border-bottom: 1px solid var(--card2); }
+  .net:last-child { border-bottom: 0; }
+  .net button { padding: 8px 14px; font-size: 15px; }
+  .pill { font-size: 12px; padding: 3px 8px; border-radius: 99px; background: var(--good); color: #032; font-weight: 700; }
+  .popup-tip { border: 2px dashed var(--accent); }
+  h2 { font-size: 20px; margin: 0 0 10px; }
+  .spin { width: 34px; height: 34px; margin: 4px auto 10px; border-radius: 50%;
+    border: 4px solid var(--card2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<main>
+  <!-- ======================= UPLOAD ======================= -->
+  <section id="tab-upload">
+    <h1>📺 Photo TV</h1>
+    <p class="sub" id="tv-count">Send your photos to the TV</p>
+
+    <div class="card popup-tip hidden" id="popup-tip">
+      <b>Tip:</b> if the button below doesn't open your photos, tap
+      <b>Stay connected</b>, then open Safari or Chrome and go to <b>192.168.4.1</b>
+      <div style="margin-top:12px"><button id="accept-btn" style="width:100%">Stay connected</button></div>
+    </div>
+
+    <label class="big" id="pick">
+      <span class="icon">🖼️</span>
+      Choose photos
+      <small>Pick as many as you like</small>
+      <input type="file" id="files" accept="image/*" multiple>
+    </label>
+
+    <div class="card hidden" id="getting" style="margin-top:14px;text-align:center">
+      <div class="spin"></div>
+      <b>Getting your photos ready…</b>
+      <div class="muted">With lots of photos the phone needs a moment.</div>
+    </div>
+
+    <div class="card hidden" id="progress" style="margin-top:14px">
+      <div class="row" style="align-items:baseline">
+        <div><span class="count" id="p-done">0</span> <span class="muted">of <span id="p-total">0</span> sent</span></div>
+        <div style="text-align:right" class="muted" id="p-state">Starting…</div>
+      </div>
+      <div class="bar"><div id="p-bar"></div></div>
+      <div class="stats">
+        <div class="stat"><b id="p-left">–</b><span>time left</span></div>
+        <div class="stat"><b id="p-elapsed">0:00</b><span>time so far</span></div>
+        <div class="stat"><b id="p-speed">–</b><span>speed</span></div>
+      </div>
+      <div class="recent" id="recent"></div>
+      <div id="p-msg"></div>
+      <div class="row" style="margin-top:12px">
+        <button id="retry-btn" class="hidden" style="background:var(--accent);color:#2b1a00">Send the rest</button>
+      </div>
+    </div>
+    <p class="muted" style="text-align:center;margin-top:18px">Keep this screen on until it says done.<br>You can add more photos any time, even while it’s sending.</p>
+  </section>
+
+  <!-- ======================= LOGIN ======================= -->
+  <section id="tab-login" class="hidden">
+    <h1>🔒 Password</h1>
+    <p class="sub">Viewing photos and changing settings needs the password.</p>
+    <div class="card">
+      <form id="login-form">
+        <input type="password" id="pw" placeholder="Password" autocomplete="current-password" autocapitalize="none">
+        <button style="width:100%;margin-top:12px;background:var(--accent);color:#2b1a00">Unlock</button>
+        <div id="login-msg"></div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ======================= PHOTOS ======================= -->
+  <section id="tab-photos" class="hidden">
+    <h1>🖼️ Photos</h1>
+    <p class="sub" id="photos-count"></p>
+    <div class="grid" id="grid"></div>
+    <button id="more-btn" class="hidden" style="width:100%;margin-top:12px">Show more</button>
+  </section>
+
+  <!-- ======================= SETTINGS ======================= -->
+  <section id="tab-settings" class="hidden">
+    <h1>⚙️ Settings</h1>
+    <p class="sub">The Pi joins these wifis by itself when they're nearby.</p>
+
+    <div class="card">
+      <h2>Connected to</h2>
+      <div id="wifi-now" class="muted">Checking…</div>
+    </div>
+
+    <div class="card">
+      <h2>Add a wifi</h2>
+      <form id="wifi-form">
+        <input type="text" id="wifi-ssid" placeholder="Wifi name" autocapitalize="none" autocorrect="off" list="nearby-list">
+        <datalist id="nearby-list"></datalist>
+        <input type="password" id="wifi-pw" placeholder="Wifi password" style="margin-top:10px" autocapitalize="none">
+        <button style="width:100%;margin-top:12px;background:var(--accent);color:#2b1a00">Save wifi</button>
+        <div id="wifi-msg"></div>
+      </form>
+      <p class="muted" style="margin-bottom:0">Phone hotspots must be on <b>2.4 GHz</b> — on iPhone turn on
+        <b>Maximize Compatibility</b>.</p>
+    </div>
+
+    <div class="card">
+      <h2>Saved wifis</h2>
+      <div id="wifi-saved" class="muted">…</div>
+    </div>
+
+    <div class="card">
+      <h2>Nearby</h2>
+      <div id="wifi-nearby" class="muted">…</div>
+    </div>
+
+    <div class="card">
+      <h2>Slideshow</h2>
+      <div class="row">
+        <span>Seconds per photo</span>
+        <input type="number" id="slide-seconds" min="3" max="300" inputmode="numeric" style="max-width:110px">
+      </div>
+      <div id="settings-msg"></div>
+    </div>
+    <p class="muted" id="free-space" style="text-align:center"></p>
+  </section>
+</main>
+
+<div class="viewer hidden" id="viewer">
+  <img id="viewer-img" alt="">
+  <div class="row">
+    <button id="viewer-close">Close</button>
+    <a class="btn" id="viewer-dl" style="text-align:center;text-decoration:none">Save</a>
+    <button id="viewer-del" style="background:var(--bad);color:#300">Delete</button>
+  </div>
+</div>
+
+<nav>
+  <button data-tab="upload" class="on"><span class="i">⬆️</span>Upload</button>
+  <button data-tab="photos"><span class="i">🖼️</span>Photos</button>
+  <button data-tab="settings"><span class="i">⚙️</span>Settings</button>
+</nav>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = async (path, body) => {
+  const r = await fetch(path, body === undefined ? {} : {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const data = await r.json().catch(() => ({}));
+  if (r.status === 403 && data.error === 'password') { authed = false; show(pendingTab || 'photos'); throw new Error('password'); }
+  return Object.assign(data, {status: r.status});
+};
+const msg = (el, text, kind) => { $(el).innerHTML = text ? `<div class="msg ${kind || ''}">${text}</div>` : ''; };
+const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const clock = (sec) => {
+  sec = Math.max(0, Math.round(sec));
+  const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+};
+const leftText = (sec) => sec < 60 ? `${Math.ceil(sec)} sec` : sec < 3600 ? `${Math.ceil(sec / 60)} min` : clock(sec);
+
+let authed = false, pendingTab = null, status = {};
+
+// ---------------------------------------------------------------- tabs ---
+function show(tab) {
+  const needsPw = (tab === 'photos' || tab === 'settings') && !authed;
+  if (needsPw) pendingTab = tab;
+  for (const t of ['upload', 'login', 'photos', 'settings'])
+    $('tab-' + t).classList.toggle('hidden', t !== (needsPw ? 'login' : tab));
+  document.querySelectorAll('nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  window.scrollTo(0, 0);
+  if (needsPw) { setTimeout(() => $('pw').focus(), 50); return; }
+  if (tab === 'photos') loadPhotos(true);
+  if (tab === 'settings') loadSettings();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => show(b.dataset.tab));
+
+$('login-form').onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await api('/api/login', {password: $('pw').value});
+  if (r.ok) { authed = true; $('pw').value = ''; msg('login-msg'); show(pendingTab || 'photos'); }
+  else msg('login-msg', 'That password isn’t right.', 'bad');
+};
+
+async function refreshStatus() {
+  try {
+    status = await api('/api/status');
+    authed = status.authed;
+    const n = status.photos;
+    $('tv-count').textContent = n ? `${n} photo${n === 1 ? '' : 's'} on the TV` +
+      (status.processing ? ` · ${status.processing} getting ready` : '') : 'Send your photos to the TV';
+  } catch (e) {}
+}
+
+// The popup that appears when you join the wifi sometimes can't open photos.
+if (new URLSearchParams(location.search).get('popup')) $('popup-tip').classList.remove('hidden');
+$('accept-btn').onclick = async () => {
+  await api('/api/accept', {});
+  $('popup-tip').innerHTML = '<b>Done!</b> You can close this and open <b>192.168.4.1</b> in Safari or Chrome, or keep using it here.';
+};
+
+// -------------------------------------------------------------- upload ---
+// Every photo is shrunk to TV size on the phone before sending (works for
+// JPEG, HEIC, PNG, WebP, GIF, AVIF... whatever the phone can show). That makes
+// uploads several times faster, and the Pi never has to read odd formats.
+// Anything the phone can't read is sent as-is; if the Pi can't read it either
+// it is quietly dropped. Nothing ever stops the rest from going through.
+const MAX_SIDE = 1920;   // the TV is 1920x1080, more is wasted wifi
+const queue = [];   // {file, key, state: 'wait'|'done'|'skip'|'bad'|'fail', tries, ready}
+let running = false, startTime = 0, bytesSent = 0, currentFrac = 0, tick = null, lastProgress = 0;
+let photoSeconds = [];   // how long each recent photo took, for the time-left guess
+const recentUrls = [];
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, no) => setTimeout(() => no(new Error('timeout')), ms))]);
+}
+
+// While the phone gets the chosen photos ready (an iPhone converts them first,
+// which can take a while for 100+), show that something is happening.
+let picking = false, pickTimer = null;
+let warmTimer = null;
+function keepWifiAwake(on) {
+  // Phone wifi naps when idle; a tiny request every few seconds while
+  // someone is choosing photos means the first photo goes straight out.
+  clearInterval(warmTimer);
+  if (on) warmTimer = setInterval(() => fetch('/api/status', {cache: 'no-store'}).catch(() => {}), 4000);
+}
+$('pick').addEventListener('click', () => { picking = true; keepWifiAwake(true); setTimeout(() => keepWifiAwake(false), 180000); });
+window.addEventListener('focus', () => {
+  if (!picking) return;
+  clearTimeout(pickTimer);
+  pickTimer = setTimeout(() => {
+    if (!picking) return;
+    $('getting').classList.remove('hidden');
+    pickTimer = setTimeout(() => { picking = false; $('getting').classList.add('hidden'); }, 120000);
+  }, 1200);
+});
+$('files').addEventListener('cancel', () => { picking = false; keepWifiAwake(false); $('getting').classList.add('hidden'); });
+
+$('files').onchange = async (e) => {
+  picking = false;
+  keepWifiAwake(false);
+  clearTimeout(pickTimer);
+  $('getting').classList.add('hidden');
+  const files = [...e.target.files];
+  e.target.value = '';
+  if (!files.length) return;
+  const items = files.map(f => ({file: f, key: `${f.name}|${f.size}`, state: f.size ? 'wait' : 'bad', tries: 0, fileErrors: 0}));
+  queue.push(...items);
+  $('progress').classList.remove('hidden');
+  $('progress').scrollIntoView({behavior: 'smooth', block: 'start'});
+  render();
+  // Skip photos the TV already has. If the check is slow, just send them.
+  try {
+    const {have = []} = await withTimeout(api('/api/check', {keys: items.map(i => i.key)}), 8000);
+    const known = new Set(have);
+    for (const it of items) if (it.state === 'wait' && known.has(it.key)) it.state = 'skip';
+  } catch (e) {}
+  render();
+  if (!running) runQueue();
+};
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => resolve({img, url});
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+    img.src = url;
+  });
+}
+
+// Photos kept only in iCloud (or otherwise not really on the phone) come
+// through as files that can't be read. Find out quickly instead of hanging.
+async function readable(file) {
+  try {
+    const head = await withTimeout(file.slice(0, 64).arrayBuffer(), 15000);
+    return head.byteLength > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Returns a small JPEG for the TV, the original file if the phone can't show
+// it (the Pi gets a go), or null if the file can't be read at all.
+async function prepare(file) {
+  try {
+    const {img, url} = await withTimeout(loadImage(file), 20000);
+    // <img> already turns sideways phone photos the right way up.
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w * scale)); c.height = Math.max(1, Math.round(h * scale));
+    const g = c.getContext('2d');
+    g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);   // see-through PNGs
+    g.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.86));
+    c.width = c.height = 0;   // free the memory now, phones are tight on it
+    if (blob && blob.size) return new File([blob], 'photo.jpg', {type: 'image/jpeg'});
+  } catch (e) {}
+  return (await readable(file)) ? file : null;
+}
+
+async function piReachable() {
+  try {
+    const r = await withTimeout(fetch('/api/status', {cache: 'no-store'}), 5000);
+    return r.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+function render() {
+  const total = queue.length;
+  const count = (s) => queue.filter(i => i.state === s).length;
+  const done = count('done'), skipped = count('skip'), bad = count('bad'), failed = count('fail');
+  const finished = done + skipped + bad;
+  $('p-done').textContent = finished;
+  $('p-total').textContent = total;
+  $('p-bar').style.width = (total ? Math.min(100, (finished + (running ? currentFrac : 0)) / total * 100) : 0) + '%';
+  const elapsed = startTime ? (Date.now() - startTime) / 1000 : 0;
+  $('p-elapsed').textContent = clock(elapsed);
+  const speed = elapsed > 2 ? bytesSent / elapsed : 0;
+  $('p-speed').textContent = speed ? (speed / 1e6).toFixed(1) + ' MB/s' : '–';
+  const left = count('wait');
+  const avg = photoSeconds.length ? photoSeconds.reduce((a, b) => a + b, 0) / photoSeconds.length : 0;
+  $('p-left').textContent = running ? (avg ? leftText(Math.max(1, (left - currentFrac) * avg)) : '…') : 'done';
+  const slow = running && !waitingForWifi && Date.now() - lastProgress > 10000;
+  $('p-state').textContent = running ? (waitingForWifi ? 'Waiting for wifi…' : slow ? 'Wifi is slow…' : 'Sending…')
+    : failed ? `${failed} waiting` : 'All done ✓';
+  $('retry-btn').classList.toggle('hidden', running || !failed);
+  const notes = [];
+  if (!running && total) {
+    notes.push(failed
+      ? [`${failed} photo${failed === 1 ? '' : 's'} couldn’t get through. Make sure you’re on the “${esc(status.ap_ssid || 'raspberry pi tv')}” wifi, then tap “Send the rest”.`, 'bad']
+      : ['All sent! They’ll show on the TV in a moment.', 'good']);
+    const extra = [];
+    if (skipped) extra.push(`${skipped} ${skipped === 1 ? 'was' : 'were'} already on the TV`);
+    if (bad) extra.push(`${bad} couldn’t be opened and ${bad === 1 ? 'was' : 'were'} skipped (usually photos that are only in iCloud)`);
+    if (extra.length) notes.push([extra.join(' · ') + '.', '']);
+  } else if (waitingForWifi) {
+    notes.push(['Lost the TV wifi for a moment — it will carry on by itself.', '']);
+  } else if (slow) {
+    notes.push(['The wifi is slow for a moment. Nothing to do — it’s still going.', '']);
+  }
+  $('p-msg').innerHTML = notes.map(([t, k]) => `<div class="msg ${k}">${t}</div>`).join('');
+}
+
+function addRecent(file) {
+  // Thumbnails come straight from the phone's own copy, so they cost no wifi.
+  const url = URL.createObjectURL(file);
+  recentUrls.unshift(url);
+  if (recentUrls.length > 5) URL.revokeObjectURL(recentUrls.pop());
+  $('recent').innerHTML = recentUrls.map(u => `<img src="${u}" alt="">`).join('');
+}
+
+function send(item, body) {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', '/api/upload');
+    xhr.setRequestHeader('X-Name', encodeURIComponent(body === item.file ? (item.file.name || 'photo') : 'photo.jpg'));
+    xhr.setRequestHeader('X-Key', encodeURIComponent(item.key));
+    xhr.timeout = 3 * 60 * 1000;
+    xhr.upload.onprogress = (e) => { lastProgress = Date.now(); if (e.total) currentFrac = 0.2 + 0.8 * e.loaded / e.total; };
+    xhr.onload = () => resolve(xhr.status === 200 ? 'ok' : xhr.status === 507 ? 'full'
+      : xhr.status === 400 ? 'bad' : 'error');
+    xhr.onerror = xhr.ontimeout = xhr.onabort = () => resolve('error');
+    xhr.send(body);
+  });
+}
+
+let waitingForWifi = false;
+async function runQueue() {
+  running = true;
+  if (!startTime) startTime = Date.now();
+  clearInterval(tick);
+  tick = setInterval(render, 500);
+  const next = () => queue.find(i => i.state === 'wait');
+  let item;
+  while ((item = next())) {
+    const t0 = Date.now();
+    currentFrac = 0;
+    lastProgress = Date.now();
+    const body = await (item.ready || prepare(item.file));
+    item.ready = null;
+    if (!body) {   // can't be read (e.g. only in iCloud): skip it, keep going
+      item.state = 'bad';
+      render();
+      continue;
+    }
+    currentFrac = 0.2;
+    lastProgress = Date.now();
+    // Shrink the following photo while this one is being sent.
+    const after = queue.find(i => i.state === 'wait' && i !== item);
+    if (after && !after.ready) after.ready = prepare(after.file);
+    const result = await send(item, body);
+    if (result === 'ok') {
+      item.state = 'done';
+      bytesSent += body.size;
+      addRecent(body.type === 'image/jpeg' ? body : item.file);
+      photoSeconds.push((Date.now() - t0) / 1000);
+      if (photoSeconds.length > 15) photoSeconds.shift();
+      waitingForWifi = false;
+    } else if (result === 'bad') {
+      item.state = 'bad';
+    } else if (result === 'full') {
+      for (const i of queue) if (i.state === 'wait') i.state = 'fail';
+      item.state = 'fail';
+      msg('p-msg', 'The Pi’s memory card is full.', 'bad');
+    } else if (await piReachable()) {
+      // The Pi answers fine, so the photo itself is the problem
+      // (usually a file the phone couldn't hand over). Skip it after a retry.
+      if (++item.fileErrors >= 2) item.state = 'bad';
+      else item.ready = Promise.resolve(body);
+    } else {
+      // Wifi hiccup: keep trying for a few minutes before giving up on it.
+      item.ready = Promise.resolve(body);
+      waitingForWifi = true;
+      render();
+      if (++item.tries >= 12) { item.state = 'fail'; item.ready = null; waitingForWifi = false; }
+      else await new Promise(r => setTimeout(r, Math.min(15000, 1500 * item.tries)));
+    }
+    currentFrac = 0;
+    render();
+  }
+  running = false;
+  waitingForWifi = false;
+  clearInterval(tick);
+  render();
+  refreshStatus();
+}
+
+$('retry-btn').onclick = () => {
+  for (const i of queue) if (i.state === 'fail') { i.state = 'wait'; i.tries = 0; i.fileErrors = 0; }
+  if (!running) runQueue();
+};
+
+window.addEventListener('beforeunload', (e) => { if (running) { e.preventDefault(); e.returnValue = ''; } });
+
+// -------------------------------------------------------------- photos ---
+let photoOffset = 0, viewing = null;
+async function loadPhotos(reset) {
+  if (reset) { photoOffset = 0; $('grid').innerHTML = ''; }
+  const r = await api(`/api/photos?offset=${photoOffset}&limit=60`);
+  $('photos-count').textContent = r.total ? `${r.total} photos, newest first` : 'No photos yet — upload some!';
+  $('grid').insertAdjacentHTML('beforeend', r.photos.map(id =>
+    `<img loading="lazy" src="/thumbs/${id}.jpg" data-id="${id}" alt="">`).join(''));
+  photoOffset += r.photos.length;
+  $('more-btn').classList.toggle('hidden', photoOffset >= r.total);
+}
+$('more-btn').onclick = () => loadPhotos(false);
+$('grid').onclick = (e) => {
+  const id = e.target.dataset && e.target.dataset.id;
+  if (!id) return;
+  viewing = id;
+  $('viewer-img').src = `/display/${id}.jpg`;
+  $('viewer-dl').href = `/original/${id}`;
+  $('viewer-dl').setAttribute('download', `photo-${id}.jpg`);
+  $('viewer').classList.remove('hidden');
+};
+$('viewer-close').onclick = () => { $('viewer').classList.add('hidden'); $('viewer-img').src = ''; };
+$('viewer-del').onclick = async () => {
+  if (!confirm('Delete this photo from the TV?')) return;
+  await api('/api/delete', {id: viewing});
+  document.querySelector(`#grid img[data-id="${viewing}"]`)?.remove();
+  $('viewer-close').onclick();
+  refreshStatus();
+};
+
+// ------------------------------------------------------------ settings ---
+async function loadSettings() {
+  await refreshStatus();
+  $('slide-seconds').value = status.slide_seconds;
+  $('free-space').textContent = `${status.free_gb} GB free on the Pi`;
+  const w = await api('/api/wifi');
+  if (!w.nmcli) { $('wifi-now').textContent = 'Wifi controls only work on the Pi.'; }
+  else $('wifi-now').innerHTML = w.connected
+    ? `<b>${esc(w.connected)}</b><br><span class="muted">Phones on that wifi can open <b>${esc(w.ip || '')}</b> or <b>pitv.local</b></span>`
+    : 'Not connected to any wifi right now.';
+  $('wifi-saved').innerHTML = w.saved.length ? w.saved.map(s => `
+    <div class="net"><div>${esc(s.ssid)} ${s.name === w.connected ? '<span class="pill">connected</span>' : ''}</div>
+    <button data-remove="${esc(s.name)}">Remove</button></div>`).join('') : 'None yet.';
+  $('wifi-nearby').innerHTML = w.nearby.length ? w.nearby.map(n => `
+    <div class="net"><div>${esc(n.ssid)} <span class="muted">${n.secure ? '🔒' : ''} ${n.signal}%</span></div>
+    <button data-pick="${esc(n.ssid)}">Use</button></div>`).join('') : 'Nothing found.';
+  $('nearby-list').innerHTML = w.nearby.map(n => `<option value="${esc(n.ssid)}">`).join('');
+}
+$('wifi-saved').onclick = async (e) => {
+  const name = e.target.dataset.remove;
+  if (!name || !confirm(`Forget “${name}”?`)) return;
+  await api('/api/wifi/remove', {name});
+  loadSettings();
+};
+$('wifi-nearby').onclick = (e) => {
+  if (!e.target.dataset.pick) return;
+  $('wifi-ssid').value = e.target.dataset.pick;
+  $('wifi-pw').focus();
+  $('wifi-form').scrollIntoView({behavior: 'smooth', block: 'center'});
+};
+$('wifi-form').onsubmit = async (e) => {
+  e.preventDefault();
+  msg('wifi-msg', 'Saving…');
+  const r = await api('/api/wifi/add', {ssid: $('wifi-ssid').value.trim(), password: $('wifi-pw').value});
+  if (r.ok) {
+    msg('wifi-msg', 'Saved! The Pi will join it whenever it’s nearby. (The TV wifi may blink for a few seconds.)', 'good');
+    $('wifi-ssid').value = $('wifi-pw').value = '';
+    setTimeout(loadSettings, 6000);
+  } else msg('wifi-msg', esc(r.error || 'Could not save.'), 'bad');
+};
+$('slide-seconds').onchange = async () => {
+  await api('/api/settings', {slide_seconds: +$('slide-seconds').value});
+  msg('settings-msg', 'Saved.', 'good');
+};
+
+refreshStatus();
+setInterval(() => { if (!running) refreshStatus(); }, 15000);
+</script>
+</body>
+</html>

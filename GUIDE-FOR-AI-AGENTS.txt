@@ -1,0 +1,163 @@
+GUIDE FOR AI AGENTS - install, use, update and debug Pi Photo TV
+=================================================================
+
+Read this whole file before touching the Pi. The "Gotchas" section is
+there because each one already cost a debugging session.
+
+1. WHAT IT IS
+-------------
+Hardware: Raspberry Pi Zero W (ARMv6, 1 core, 512 MB RAM, 2.4 GHz-only
+wifi with ONE radio), HDMI to a TV.
+OS: Raspberry Pi OS Lite 32-bit (Debian 13 "trixie" base at the time of
+writing). Uses NetworkManager.
+Language: Python 3 standard library + Pillow (python3-pil from apt). No
+pip, no venv, no Node. One HTML file with vanilla JS.
+
+Three systemd services (files in systemd/, installed to /etc/systemd/system):
+  pitv-net.service        /opt/pitv/netmanager.py
+  pitv-web.service        /opt/pitv/server.py
+  pitv-slideshow.service  /opt/pitv/slideshow.py
+
+Code (repo pitv/ -> installed to /opt/pitv/):
+  common.py      paths, config, process_photo() (makes the 1920x1080 TV
+                 image on a blurred backdrop + 360px thumbnail), heif-dec
+                 fallback for HEIC/AVIF, and a "--serve" helper mode.
+  server.py      http.server on port 80 (IPv6+IPv4 dual stack). Upload
+                 API, gallery API, wifi API (nmcli), captive portal answers.
+                 Runs ONE long-lived helper process ("common.py --serve",
+                 nice 10) that prepares photos; if it crashes the photo is
+                 dropped and the helper restarts. Photo prep waits while
+                 uploads are arriving (single CPU core).
+  slideshow.py   draws straight to /dev/fb0 (no X/Wayland). Handles 16/24/
+                 32 bpp. Saves position after every photo, resumes 5
+                 photos back on restart. New uploads jump the queue.
+  netmanager.py  creates virtual AP interface uap0 on the same radio as
+                 wlan0, runs hostapd (open network "raspberry pi tv") and
+                 dnsmasq (DHCP 192.168.4.10-250, DNS answers EVERY name
+                 with 192.168.4.1, DHCP option 114 captive URL). Keeps the
+                 AP on the same channel as wlan0's hotspot connection.
+  web/index.html the whole phone UI: upload, gallery (password), settings.
+
+Data on the Pi: /var/lib/pitv/
+  originals/   what the phone sent (normally a 1920px JPEG made on the phone)
+  display/     TV-ready 1920x1080 JPEGs (the slideshow reads these)
+  thumbs/      gallery thumbnails
+  incoming/    partial uploads (wiped at start)
+  keys.json    "filename|size" -> photo id, used to skip duplicates
+  config.json  overrides: {"password","slide_seconds","ap_ssid","country"}
+  slideshow_state.json   last photo shown
+  secret       random value for the login cookie
+Photo ids are "<13-digit ms timestamp>-<6 hex>", so sorting = upload order.
+
+2. HOW THE UPLOAD FLOW WORKS (and why)
+--------------------------------------
+Phone side (index.html):
+- input accept="image/*" multiple. On iPhone this makes iOS convert HEIC
+  to JPEG while picking (reliable on old iOS too). A "Getting your photos
+  ready" card shows while the phone does that.
+- Each photo is decoded with an <img> (gets EXIF rotation right, and
+  opens HEIC on Safari, WebP, GIF, AVIF, PNG...), drawn to a canvas at max
+  1920px, sent as JPEG q0.86. 3.7 MB -> ~0.3 MB. The next photo is shrunk
+  while the current one uploads.
+- If the browser can't decode it, the original is sent and the Pi tries
+  (Pillow, then heif-dec). If the file can't even be READ (iCloud-only
+  photo, 0 bytes) it is skipped and counted as "couldn't be opened".
+- Network error: the page asks /api/status. Pi answers -> the file is the
+  problem -> skip after 2 tries. Pi doesn't answer -> wifi problem ->
+  "Waiting for wifi", retry with backoff up to 12 times, then "Send the
+  rest" button.
+- Duplicates: POST /api/check with "name|size" keys first (8 s timeout,
+  on timeout just send everything).
+- Upload: PUT /api/upload, raw body, headers X-Name and X-Key (URL
+  encoded). 0-byte body -> 400. Disk nearly full -> 507.
+Pi side: saves to originals/, queues it; the helper makes display/ and
+thumbs/ files; anything unreadable is deleted and its key forgotten.
+
+Captive portal: phones probe e.g. captive.apple.com/hotspot-detect.html
+or connectivitycheck.gstatic.com/generate_204. DNS sends them to the Pi.
+Any Host that isn't an IP / *.local gets a 302 to http://192.168.4.1/?popup=1
+-> the OS shows the popup. "Stay connected" (POST /api/accept) makes the
+Pi answer that client's probes with the real success responses.
+
+3. INSTALL ON A NEW PI
+----------------------
+Flash Raspberry Pi OS Lite 32-bit with Raspberry Pi Imager; set hostname
+pitv, a user, the hotspot wifi (2.4 GHz!), wifi country, enable SSH.
+Then from a computer on the same network:
+    ./send-to-pi.sh <user>@pitv.local
+(It opens one SSH ControlMaster connection so the human types the
+password once, scp's this folder, runs sudo ./install.sh, which ends with
+a reboot.) Or manually: scp -r the folder, ssh in, cd, sudo ./install.sh.
+install.sh: apt installs python3-pil hostapd dnsmasq-base iw rfkill
+fonts-dejavu-core avahi-daemon libheif-examples; persistent journald
+(50 MB cap); disables stock hostapd/dnsmasq services; NetworkManager
+ignores uap0; sets wifi country; hostname pitv; asks for a hotspot to
+save; adds to cmdline.txt video=HDMI-A-1:1920x1080@60D consoleblank=0
+vt.global_cursor_default=0 logo.nologo quiet loglevel=3 (backup at
+cmdline.txt.before-pitv); disables getty@tty1; enables the 3 services.
+
+4. UPDATE AN INSTALLED PI
+-------------------------
+Copy the folder over, then on the Pi: cd ~/PiPhotoTV && sudo ./update.sh
+It copies pitv/ to /opt/pitv, installs heif-dec if missing, restarts
+pitv-web and pitv-slideshow. It does NOT restart pitv-net (that would
+kick phones off the wifi) - reboot if netmanager.py changed.
+From a Mac, one line (human types the Pi password once):
+  COPYFILE_DISABLE=1 tar czf - --no-xattrs PiPhotoTV | ssh <user>@pitv.local 'rm -rf ~/PiPhotoTV && tar xzf - -C ~ && cd ~/PiPhotoTV && sudo ./update.sh'
+
+5. CHECKING ON IT
+-----------------
+  curl http://pitv.local/api/status        photos, queue, free space
+  systemctl is-active pitv-net pitv-web pitv-slideshow
+  systemctl show pitv-web -p NRestarts     >0 means it has been crashing
+  journalctl -u pitv-web -u pitv-net -u pitv-slideshow -b
+  journalctl --list-boots                  logs survive reboots (persistent)
+  vcgencmd get_throttled                   non-zero = power supply problems
+  /usr/sbin/iw dev wlan0 link              hotspot connection + channel
+Test locally on any computer (no Pi needed):
+  PITV_PORT=8080 PITV_DATA=/tmp/pitvdata python3 pitv/server.py
+  PITV_DATA=/tmp/pitvdata PITV_FB=/tmp/fb0 python3 pitv/slideshow.py
+  (the fake framebuffer is a raw 1920x1080 BGRX file)
+
+6. RULES FOR AGENTS
+-------------------
+- The human types the Pi's SSH password themselves. Do not type or store
+  passwords. Don't add SSH keys or change logins unless asked.
+- Never restart pitv-net or NetworkManager over SSH unless you're
+  prepared to lose the session (the AP and the hotspot share one radio).
+- Test uploads you make are real photos on the family TV: delete them
+  afterwards (match keys.json entries you created, remove the files in
+  originals/, display/, thumbs/, and the keys).
+- Keep it standard-library + apt. Anything compiled must run on ARMv6.
+
+7. GOTCHAS (each of these really happened)
+------------------------------------------
+- ILLEGAL INSTRUCTION: Debian's libwebp (and possibly other libs) crash
+  with SIGILL on the Zero's ARMv6 CPU. Pillow decoding a WebP killed the
+  whole web server, every few seconds, ~200 times. Fix: never decode
+  photos inside the server process; phones convert odd formats first.
+- heif-dec (libheif-examples) DOES work on the Zero: ~8.5 s per 12MP HEIC.
+  python3-pillow-heif is not packaged for it.
+- iOS sends 0-byte files for photos that are only in iCloud, and old
+  servers recorded them as "already uploaded" so they could never be
+  re-sent. Now: rejected, and keys of failed photos are forgotten.
+- Starting Python+Pillow costs >1 s on a Zero. Don't spawn a process per
+  photo; keep one helper alive.
+- The single CPU core can't receive uploads and process photos at full
+  speed at once: processing pauses while uploads are arriving.
+- Full-size uploads (3-4 MB each) took ~5.5 min per 100 photos over the
+  hotspot; shrinking on the phone to 1920px made it 30 s.
+- Over the phone hotspot the link sometimes stalls (we measured up to
+  ~40 s, plus ~1 s spikes seen from the Pi and the Mac at the same moment,
+  i.e. the hotspot itself). The page shows "Wifi is slow..." after 10 s
+  without progress and keeps going; it also pings the Pi every 4 s while
+  someone is picking photos so the link is awake when sending starts.
+- Phone hotspots must be 2.4 GHz; the Zero W can't see 5 GHz at all.
+- The AP must use the hotspot's channel (one radio). netmanager.py moves
+  the AP when wlan0's channel changes, which drops AP clients briefly.
+- The kernel log says the forced video= mode is "not supported"; harmless,
+  the TV still gets 1080p via KMS.
+- Journald was volatile by default: a crash before a power cut left no
+  logs. install.sh/update.sh now make it persistent.
+- macOS tar adds xattr headers; use COPYFILE_DISABLE=1 and --no-xattrs.
+- curl to pitv.local used IPv6 first; the server listens dual-stack now.

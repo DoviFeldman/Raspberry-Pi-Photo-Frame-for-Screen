@@ -1,0 +1,83 @@
+SETUP FOR HUMANS
+================
+
+You need
+--------
+- A Raspberry Pi Zero W, a microSD card (16 GB or bigger), and a good
+  power supply (5 volt, 2.5 amp). Weak chargers make the wifi unstable.
+- A mini-HDMI to HDMI cable for the TV.
+- A computer (Mac or Windows) for the one-time setup.
+- A phone hotspot (or home wifi) with internet, for the one-time setup.
+  IMPORTANT: the Pi Zero only sees 2.4 GHz wifi.
+  iPhone: Settings > Personal Hotspot > turn ON "Maximize Compatibility".
+  Android: Hotspot settings > Band > 2.4 GHz.
+
+Step 1 - Put the system on the memory card (about 20-30 minutes)
+----------------------------------------------------------------
+1. On the computer, install "Raspberry Pi Imager" from raspberrypi.com.
+2. Open it and choose:
+     Device:  Raspberry Pi Zero
+     OS:      Raspberry Pi OS (other) > Raspberry Pi OS Lite (32-bit)
+     Storage: your memory card
+3. When it asks about settings, choose "Edit settings" and fill in:
+     Hostname:  pitv
+     Username and password: anything you'll remember
+     Wifi: your hotspot's name and password, typed exactly
+     Wifi country: your country
+     Services tab: turn ON SSH, use password
+4. Write. It downloads, writes, then checks the card. The progress bar
+   starting again from 0 is the checking step, that's normal.
+
+Step 2 - Start the Pi
+---------------------
+1. Turn your hotspot on.
+2. Put the card in the Pi and plug in power (the port marked PWR).
+3. Wait about 3-5 minutes. The first start is slow, it sets itself up.
+
+Step 3 - Install the program (about 15-20 minutes)
+--------------------------------------------------
+Put the computer on the same hotspot. Then:
+
+Mac: open the Terminal app, drag the "send-to-pi.sh" file from this
+folder into the Terminal window, type a space, then type your username
+@pitv.local, for example:
+
+    /Users/you/PiPhotoTV/send-to-pi.sh raspberry@pitv.local
+
+and press Enter. Type the Pi's password when asked (nothing shows while
+you type, that's normal). When the installer asks for the hotspot name,
+just press Enter - the Pi already knows it from Step 1.
+
+Windows: open PowerShell and run these, one at a time (replace raspberry
+with your username):
+
+    scp -r C:\path\to\PiPhotoTV raspberry@pitv.local:~
+    ssh -t raspberry@pitv.local "cd PiPhotoTV && sudo ./install.sh"
+
+At the end the Pi restarts by itself. Done!
+
+Step 4 - Use it
+---------------
+1. Plug the Pi into the TV. Photos start playing (or a welcome screen
+   that explains what to do, if there are no photos yet).
+2. On a phone, open wifi settings and join "raspberry pi tv".
+3. A page pops up. Tap "Choose photos" and pick photos. Keep the screen
+   on until it says "All done".
+   - If the popup page doesn't open your photos: tap "Stay connected",
+     then open Safari or Chrome and go to  192.168.4.1
+   - People on the hotspot instead can go to  http://pitv.local
+4. To look at, save or delete photos on the phone: tap "Photos" at the
+   bottom and type the password (default: laura).
+5. To add another wifi for the Pi, or change how long each photo stays
+   on screen: tap "Settings" (same password).
+
+If something seems wrong
+------------------------
+- Nothing on the TV: make sure the TV is on the right HDMI input, then
+  unplug the Pi's power and plug it back in.
+- The wifi "raspberry pi tv" is missing: unplug the power, wait 10
+  seconds, plug it back in, wait 2 minutes.
+- "Some photos couldn't be opened and were skipped": those were usually
+  only in iCloud. Open them in the Photos app first so they download,
+  then send them again.
+- Turning the Pi off: just unplug it. It's built to survive that.

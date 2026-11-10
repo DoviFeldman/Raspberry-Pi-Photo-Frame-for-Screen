@@ -1,0 +1,101 @@
+HOW WE GOT HERE - problems we hit and how we fixed them
+=========================================================
+Written by Claude (the AI that built this with Dovi), October-November 2026.
+
+The goal
+--------
+We don't have home wifi, only a phone hotspot. We wanted a Raspberry Pi
+Zero W behind the TV that shows family photos all day, where anyone
+(including my mom and my wife, who aren't technical) can add photos from
+their phone in a few taps.
+
+Version 1 (Oct 26) - built and tested on a Mac
+-----------------------------------------------
+The Pi runs its own open wifi "raspberry pi tv" next to its normal hotspot
+connection, with a popup page when you join. There is an upload page with
+progress, time left and the last 5 thumbnails, a password-protected
+gallery and settings, and a framebuffer slideshow that resumes 5 photos
+back. All of it was tested on a Mac (fake framebuffer, fake uploads)
+before the Pi arrived.
+
+Problem 1 - install over SSH would cut itself off
+--------------------------------------------------
+Starting the Pi's own wifi changes the radio the SSH session runs on.
+Fix: the installer turns everything on and then reboots, instead of
+starting the wifi live.
+
+Problem 2 (Oct 27) - "the website worked twice, then never again"
+-----------------------------------------------------------------
+On the phone: "Error opening page - could not connect to the server".
+The slideshow was fine. The logs showed the web server had crashed and
+restarted 206 times, with "illegal instruction", every ~7 seconds.
+Cause: someone uploaded a WebP picture. Debian's WebP library uses CPU
+instructions the Pi Zero's old ARMv6 processor doesn't have. Reading
+that one photo killed the whole server, and since the photo was still
+waiting to be processed, it died again right after every restart.
+Fix: photos are processed in a separate helper process, so a crash only
+loses that one photo. Phones convert odd formats to JPEG before sending.
+The WebP photo was converted on the Mac and put back.
+
+Problem 3 - six photos were empty and could never be sent again
+---------------------------------------------------------------
+Six uploads were 0 bytes: the iPhone sent nothing, most likely because
+those photos were only in iCloud. Worse, the Pi had recorded them as
+"already uploaded", so sending them again was silently skipped.
+Fix: empty uploads are refused, and failed photos are forgotten so they
+can be sent again.
+
+Problem 4 - pitv.local didn't work from the hotspot
+---------------------------------------------------
+The Pi announces pitv.local on IPv6 too, but the server only listened on
+IPv4. Fix: listen on both.
+
+Problem 5 (Nov 10) - "a week ago it crashed", but no logs
+-----------------------------------------------------------
+It had been unplugged and plugged back in, and the Pi only kept logs in
+memory, so there was nothing left to read. Since then it had run 4 days
+with zero crashes. Fix: logs are now kept on the memory card (capped at
+50 MB) so the next problem can be traced.
+
+Problem 6 - "we pick 100 photos, press upload and nothing happens"
+-------------------------------------------------------------------
+We tested with real-size photos (100 x 3.7 MB) plus HEIC, PNG, WebP, GIF,
+AVIF, TIFF, BMP, a rotated photo, an empty file and a fake file, sent to
+the real Pi over the hotspot. Findings:
+- 100 photos took 5.5 minutes, and the first photo alone took 40 seconds
+  with the screen showing 0 - that's the "nothing happens".
+- Sending full-size photos is pointless: the TV is 1920x1080.
+- The Pi restarted its photo program for every photo (over 1 second each
+  on a Zero), and its one CPU core was busy preparing photos while new
+  ones were arriving.
+- The wifi path through the phone hotspot sometimes stalls: ~1 second
+  hiccups seen from the Pi and the Mac at the same moments, and
+  occasionally ~40 seconds.
+- iPhones convert HEIC to JPEG while you're picking, which takes a while
+  for many photos, and the page showed nothing during that.
+Fixes:
+- The phone shrinks every photo to TV size before sending. 3.7 MB becomes
+  about 0.3 MB. This also handles HEIC/WebP/GIF/AVIF/PNG on the phone.
+- One photo helper stays running on the Pi, and it pauses while photos
+  are arriving.
+- The Pi can open HEIC/AVIF itself with heif-dec (about 8 seconds each) in
+  case a phone sends one as-is.
+- The page shows "Getting your photos ready..." while the phone prepares,
+  keeps the wifi awake while you're picking, says "Wifi is slow... still
+  going" instead of looking frozen, and waits for the wifi by itself.
+- Photos that are only in iCloud (or can't be read) are detected in
+  seconds, skipped, and counted ("couldn't be opened and were skipped").
+  They are never retried as a wifi problem, and never block the rest.
+- Unreadable photos on the Pi are deleted quietly.
+Result: the same 100 photos were sent in 30 seconds instead of 5.5
+minutes, with every one arriving. They appear on the TV one by one over
+the next few minutes as the Pi prepares them (about 3 seconds each).
+
+Lessons
+-------
+- Test on the real hardware with real-size files. The Mac never showed
+  the WebP crash or the slow CPU.
+- On tiny computers, keep anything that can crash (image decoding) out of
+  the main program.
+- For non-technical people, the page must always show that something is
+  happening, and one bad photo must never stop the rest.

@@ -1,0 +1,12 @@
+[Unit]
+Description=Pi Photo TV slideshow on HDMI
+After=local-fs.target
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/pitv/slideshow.py
+Restart=always
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
