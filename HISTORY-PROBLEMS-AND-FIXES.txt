@@ -91,6 +91,23 @@ Result: the same 100 photos were sent in 30 seconds instead of 5.5
 minutes, with every one arriving. They appear on the TV one by one over
 the next few minutes as the Pi prepares them (about 3 seconds each).
 
+Problem 7 (Nov 12) - "we tap Add and nothing happens for minutes"
+-------------------------------------------------------------------
+Even after all that, picking ~50 photos on the iPhone and tapping "Add"
+left the photo picker sitting there for 2+ minutes; ~20 photos was fine.
+We read Safari's own source code (WebKit, WKFileUploadPanel.mm) to find
+out why. After "Add", Safari prepares the photos ONE AT A TIME (converts
+each to JPEG, and downloads the full photo first if it's only in iCloud)
+and only closes the picker after the LAST one is ready, with no progress
+shown. There is a setting to skip the conversion
+(PhotoPickerPrefersOriginalImageFormat) but it is off and websites can't
+change it. Also, if one photo fails to load, Safari cancels the whole
+selection. A web page cannot speed up or see this step.
+What we did: the button and a short note on the page now say that ~20
+at a time is quickest, and that with lots of photos the iPhone needs a
+few minutes after "Add". Picking in batches is also faster overall: the
+first batch is sending while the next one is being picked.
+
 Lessons
 -------
 - Test on the real hardware with real-size files. The Mac never showed
@@ -99,3 +116,6 @@ Lessons
   the main program.
 - For non-technical people, the page must always show that something is
   happening, and one bad photo must never stop the rest.
+- Some waiting happens inside the phone where a web page can't reach it.
+  Read the browser's source when behaviour makes no sense, then tell
+  people what to expect.

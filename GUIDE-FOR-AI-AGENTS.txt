@@ -152,6 +152,12 @@ Test locally on any computer (no Pi needed):
   i.e. the hotspot itself). The page shows "Wifi is slow..." after 10 s
   without progress and keeps going; it also pings the Pi every 4 s while
   someone is picking photos so the link is awake when sending starts.
+- iPhone "Add" hangs with many photos: Safari (WKFileUploadPanel.mm)
+  loads every picked photo sequentially in "compatible" mode (JPEG
+  conversion + iCloud download) BEFORE closing the picker, with no UI,
+  and cancels the whole selection if one fails. Not fixable from the page
+  (PhotoPickerPrefersOriginalImageFormat is an internal pref, default
+  off; accept= doesn't change it). The page tells people ~20 at a time.
 - Phone hotspots must be 2.4 GHz; the Zero W can't see 5 GHz at all.
 - The AP must use the hotspot's channel (one radio). netmanager.py moves
   the AP when wlan0's channel changes, which drops AP clients briefly.

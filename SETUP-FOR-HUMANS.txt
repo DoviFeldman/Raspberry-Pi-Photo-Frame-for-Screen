@@ -63,6 +63,10 @@ Step 4 - Use it
 2. On a phone, open wifi settings and join "raspberry pi tv".
 3. A page pops up. Tap "Choose photos" and pick photos. Keep the screen
    on until it says "All done".
+   - On iPhone, after tapping "Add" the phone prepares all the photos
+     before anything happens. With 50+ photos that can take a few
+     minutes. Picking about 20 at a time is quickest - you can pick more
+     while the first ones are sending.
    - If the popup page doesn't open your photos: tap "Stay connected",
      then open Safari or Chrome and go to  192.168.4.1
    - People on the hotspot instead can go to  http://pitv.local
