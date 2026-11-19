@@ -1,14 +1,20 @@
 SETUP FOR HUMANS
 ================
 
+First, pick a version (see README.txt):
+  HOME WIFI version  - the house where the TV is has wifi. (Most people.)
+  OWN WIFI version   - no wifi there; the Pi makes its own "raspberry pi tv".
+
 You need
 --------
-- A Raspberry Pi Zero W, a microSD card (16 GB or bigger), and a good
-  power supply (5 volt, 2.5 amp). Weak chargers make the wifi unstable.
-- A mini-HDMI to HDMI cable for the TV.
-- A computer (Mac or Windows) for the one-time setup.
+- A Raspberry Pi with wifi (Zero W, Zero 2 W, 3 A+/B/B+, or 4), a microSD
+  card (16 GB or bigger), and a good power supply (5 volt, 2.5 amp or
+  more). Weak chargers make the wifi unstable. A case and a surge
+  protector help it last.
+- An HDMI cable for the TV (the Zero needs a mini-HDMI to HDMI cable).
+- A Mac (or Windows PC) for the one-time setup.
 - A phone hotspot (or home wifi) with internet, for the one-time setup.
-  IMPORTANT: the Pi Zero only sees 2.4 GHz wifi.
+  IMPORTANT for a Pi Zero W: it only sees 2.4 GHz wifi.
   iPhone: Settings > Personal Hotspot > turn ON "Maximize Compatibility".
   Android: Hotspot settings > Band > 2.4 GHz.
 
@@ -16,7 +22,7 @@ Step 1 - Put the system on the memory card (about 20-30 minutes)
 ----------------------------------------------------------------
 1. On the computer, install "Raspberry Pi Imager" from raspberrypi.com.
 2. Open it and choose:
-     Device:  Raspberry Pi Zero
+     Device:  your Pi model
      OS:      Raspberry Pi OS (other) > Raspberry Pi OS Lite (32-bit)
      Storage: your memory card
 3. When it asks about settings, choose "Edit settings" and fill in:
@@ -34,53 +40,84 @@ Step 2 - Start the Pi
 2. Put the card in the Pi and plug in power (the port marked PWR).
 3. Wait about 3-5 minutes. The first start is slow, it sets itself up.
 
-Step 3 - Install the program (about 15-20 minutes)
---------------------------------------------------
+Step 3 - Install the program (about 5-20 minutes)
+-------------------------------------------------
 Put the computer on the same hotspot. Then:
 
 Mac: open the Terminal app, drag the "send-to-pi.sh" file from this
 folder into the Terminal window, type a space, then type your username
-@pitv.local, for example:
+@pitv.local. For the OWN WIFI version add  --own-wifi  at the end.
+For example:
 
     /Users/you/PiPhotoTV/send-to-pi.sh raspberry@pitv.local
+    /Users/you/PiPhotoTV/send-to-pi.sh raspberry@pitv.local --own-wifi
 
 and press Enter. Type the Pi's password when asked (nothing shows while
-you type, that's normal). When the installer asks for the hotspot name,
-just press Enter - the Pi already knows it from Step 1.
+you type, that's normal). The installer then asks:
+  - HOME WIFI version: the house wifi's name and password (the wifi at
+    the house where the TV will be). You can skip it and add it later.
+  - Both: which hotspot to join by itself. Just press Enter - the Pi
+    already knows it from Step 1.
 
 Windows: open PowerShell and run these, one at a time (replace raspberry
-with your username):
+with your username; add --own-wifi after install.sh for that version):
 
     scp -r C:\path\to\PiPhotoTV raspberry@pitv.local:~
     ssh -t raspberry@pitv.local "cd PiPhotoTV && sudo ./install.sh"
 
 At the end the Pi restarts by itself. Done!
 
-Step 4 - Use it
----------------
+Step 4 - Use it: HOME WIFI version
+----------------------------------
+1. Plug the Pi into the TV. Photos start playing (or a welcome screen
+   that shows the website address, if there are no photos yet). For the
+   first 3 minutes after it's turned on, the address also shows in the
+   bottom corner of the TV, for example  pitv.local  or  192.168.1.37
+2. On a phone on the same house wifi, open Safari or Chrome and go to
+   pitv.local  (if that doesn't open, type the number address from the
+   TV instead).
+3. Tap "Choose photos" and pick photos. Keep the screen on until it says
+   "All done".
+4. Make it an icon on the phone, so next time it's one tap:
+   - iPhone: in Safari tap the Share button, then "Add to Home Screen".
+   - Android: in Chrome tap the 3 dots menu, then "Add to Home screen".
+   Add it from the pitv.local address if that one works on the phone.
+
+Step 4 - Use it: OWN WIFI version
+---------------------------------
 1. Plug the Pi into the TV. Photos start playing (or a welcome screen
    that explains what to do, if there are no photos yet).
 2. On a phone, open wifi settings and join "raspberry pi tv".
 3. A page pops up. Tap "Choose photos" and pick photos. Keep the screen
    on until it says "All done".
-   - On iPhone, after tapping "Add" the phone prepares all the photos
-     before anything happens. With 50+ photos that can take a few
-     minutes. Picking about 20 at a time is quickest - you can pick more
-     while the first ones are sending.
    - If the popup page doesn't open your photos: tap "Stay connected",
      then open Safari or Chrome and go to  192.168.4.1
    - People on the hotspot instead can go to  http://pitv.local
-4. To look at, save or delete photos on the phone: tap "Photos" at the
-   bottom and type the password (default: laura).
-5. To add another wifi for the Pi, or change how long each photo stays
-   on screen: tap "Settings" (same password).
+
+Both versions
+-------------
+- On iPhone, after tapping "Add" the phone prepares all the photos
+  before anything happens. With 50+ photos that can take a few minutes,
+  and faster wifi doesn't change that part (it happens inside the phone).
+  Picking about 20 at a time is quickest - you can pick more while the
+  first ones are sending.
+- To look at, save or delete photos on the phone: tap "Photos" at the
+  bottom and type the password (default: laura).
+- To add another wifi for the Pi, or change how long each photo stays
+  on screen: tap "Settings" (same password).
 
 If something seems wrong
 ------------------------
 - Nothing on the TV: make sure the TV is on the right HDMI input, then
   unplug the Pi's power and plug it back in.
-- The wifi "raspberry pi tv" is missing: unplug the power, wait 10
-  seconds, plug it back in, wait 2 minutes.
+- HOME WIFI version, the page won't open: make sure the phone is on the
+  house wifi (not on cell data or a hotspot), and try the number address
+  shown on the TV. Unplugging the Pi and plugging it back in shows the
+  address on the TV again for 3 minutes. If the house wifi's password
+  changed, turn on your phone hotspot - the Pi joins it, and you can add
+  the new password on the Settings page from http://pitv.local
+- OWN WIFI version, the wifi "raspberry pi tv" is missing: unplug the
+  power, wait 10 seconds, plug it back in, wait 2 minutes.
 - "Some photos couldn't be opened and were skipped": those were usually
   only in iCloud. Open them in the Photos app first so they download,
   then send them again.

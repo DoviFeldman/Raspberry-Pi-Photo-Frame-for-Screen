@@ -215,9 +215,18 @@ def wifi_add(ssid, password):
         return "Wifi passwords are 8 to 63 characters."
     # Replace any older saved copy of the same network.
     run(["nmcli", "connection", "delete", "id", ssid])
-    prio = "10" if ssid.lower().startswith("dovi") else "5"
+    # Dovi's hotspot is for setup and troubleshooting. With its own wifi the
+    # hotspot comes first; in a house, the house wifi comes first (and the Pi
+    # never leaves a wifi it's on just because another one shows up).
+    home = common.network_mode() == common.HOME
+    if ssid.lower().startswith("dovi"):
+        prio = "10"
+    else:
+        prio = "20" if home else "5"
     cmd = ["nmcli", "connection", "add", "type", "wifi", "ifname", "wlan0", "con-name", ssid,
-           "ssid", ssid, "connection.autoconnect", "yes", "connection.autoconnect-priority", prio]
+           "ssid", ssid, "connection.autoconnect", "yes", "connection.autoconnect-priority", prio,
+           # Keep trying forever (the default gives up for a while after 4 tries).
+           "connection.autoconnect-retries", "0"]
     if password:
         cmd += ["wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.psk", password]
     code, _, err = run(cmd)
@@ -381,8 +390,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json({"error": "password"}, 403)
             return self.send_json(wifi_status())
 
-        if path == "/favicon.ico":
-            return self.send(204)
+        # Home-screen icon ("Add to Home Screen" on iPhone and Android).
+        if path == "/manifest.webmanifest":
+            return self.send_file(os.path.join(WEB_DIR, "manifest.webmanifest"), "application/manifest+json")
+        if path in ("/favicon.ico", "/apple-touch-icon.png", "/apple-touch-icon-precomposed.png"):
+            path = "/icon-180.png"
+        if path in ("/icon-180.png", "/icon-192.png", "/icon-512.png"):
+            return self.send_file(os.path.join(WEB_DIR, path[1:]), "image/png")
         # Anything else (a phone typing some other address) gets the app.
         return self.redirect("/")
 
@@ -448,6 +462,7 @@ class Handler(BaseHTTPRequestHandler):
             "authed": self.is_authed(),
             "slide_seconds": cfg["slide_seconds"],
             "ap_ssid": cfg["ap_ssid"],
+            "mode": common.network_mode(cfg),
             "accepted": client_ip(self) in accepted_clients,
         })
 

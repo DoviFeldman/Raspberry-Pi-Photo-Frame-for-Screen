@@ -3,7 +3,6 @@
 framebuffer (no desktop needed). Remembers where it was, and after a restart
 picks up 5 photos before that spot. New uploads are shown right away."""
 import os
-import subprocess
 import sys
 import time
 
@@ -74,15 +73,6 @@ def font(path, size):
             return ImageFont.load_default()
 
 
-def hotspot_ip():
-    try:
-        out = subprocess.run(["ip", "-4", "-o", "addr", "show", "wlan0"], capture_output=True,
-                             text=True, timeout=5).stdout
-        return out.split("inet ")[1].split("/")[0] if "inet " in out else None
-    except (OSError, subprocess.TimeoutExpired, IndexError):
-        return None
-
-
 def welcome_screen():
     cfg = common.load_config()
     im = Image.new("RGB", (common.SCREEN_W, common.SCREEN_H), (29, 26, 47))
@@ -90,14 +80,39 @@ def welcome_screen():
     d.text((960, 250), "Family Photo TV", font=font(FONT_BOLD, 110), fill=(255, 179, 71), anchor="mm")
     d.text((960, 380), "No photos yet. Here's how to add some:", font=font(FONT, 48),
            fill=(185, 178, 214), anchor="mm")
-    lines = ["1.  On your phone, join the wifi  “%s”" % cfg["ap_ssid"],
-             "2.  A page pops up (or open  %s )" % common.AP_IP,
-             "3.  Tap  Choose photos"]
-    ip = hotspot_ip()
-    if ip:
-        lines.append("On the hotspot instead? Open  %s  or  pitv.local" % ip)
+    ip = common.wlan_ip()
+    if common.network_mode(cfg) == common.HOME:
+        lines = ["1.  Put your phone on the house wifi",
+                 "2.  Open  pitv.local" + ("   or   %s" % ip if ip else ""),
+                 "3.  Tap  Choose photos"]
+        if not ip:
+            lines.append("(The TV isn't on a wifi yet. It keeps trying.)")
+    else:
+        lines = ["1.  On your phone, join the wifi  “%s”" % cfg["ap_ssid"],
+                 "2.  A page pops up (or open  %s )" % common.AP_IP,
+                 "3.  Tap  Choose photos"]
+        if ip:
+            lines.append("On the hotspot instead? Open  %s  or  pitv.local" % ip)
     for i, line in enumerate(lines):
         d.text((300, 520 + i * 110), line, font=font(FONT, 56), fill=(251, 247, 255))
+    return im
+
+
+def with_address(im):
+    """Small corner note with the website address, shown for the first
+    minutes after power-on so people can find the page on the house wifi."""
+    ip = common.wlan_ip()
+    if not ip:
+        return im
+    im = im.convert("RGB").copy()
+    d = ImageDraw.Draw(im)
+    text = "Add photos:  pitv.local   or   %s" % ip
+    f = font(FONT, 34)
+    x0, y0, x1, y1 = d.textbbox((0, 0), text, font=f)
+    w, h = x1 - x0 + 48, y1 - y0 + 30
+    X, Y = common.SCREEN_W - w - 40, common.SCREEN_H - h - 40
+    d.rounded_rectangle((X, Y, X + w, Y + h), radius=18, fill=(29, 26, 47))
+    d.text((X + 24 - x0, Y + 15 - y0), text, font=f, fill=(251, 247, 255))
     return im
 
 
@@ -137,6 +152,7 @@ def main():
     index = start_index(photos, state.current) if photos else 0
     fresh = []  # just-uploaded photos jump the line
     welcome_drawn = 0
+    show_address_until = time.time() + 180
 
     while True:
         photos = common.display_photos()
@@ -167,6 +183,8 @@ def main():
         started = time.time()
         try:
             with Image.open(os.path.join(common.DISPLAY, photo_id + ".jpg")) as im:
+                if show_address_until > time.time() and common.network_mode() == common.HOME:
+                    im = with_address(im)
                 draw(im)
         except OSError:
             continue  # deleted while we were looking at it

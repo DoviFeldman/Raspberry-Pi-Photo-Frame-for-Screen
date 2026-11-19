@@ -108,6 +108,36 @@ at a time is quickest, and that with lots of photos the iPhone needs a
 few minutes after "Add". Picking in batches is also faster overall: the
 first batch is sending while the next one is being picked.
 
+Problem 8 (Nov 13) - the Pi died
+--------------------------------
+One afternoon the TV went blank and the Pi's light never came back, with
+any cable and either power port. The memory card was fine (it read
+perfectly on the Mac, logs and photos intact). Plugged into the Mac's USB
+with no card, a live Pi shows up as a USB device; this one didn't, so the
+board itself was dead. The logs just stop mid-slideshow at 17:04 with no
+warning (no undervoltage, no overheating, no errors): an instant death,
+the kind a power spike, a short on the bare board, or a failing power
+chip causes. Advice: a case, a good power supply, a surge protector.
+
+Version 2 (Nov 18) - the home wifi version
+-------------------------------------------
+A new Pi (a Pi 3 Model A+) went to Laura's parents, who have real wifi.
+There, a separate "raspberry pi tv" wifi is just an extra step, and the
+house wifi is much faster than the Pi's own wifi over a cell hotspot. So
+there are now two versions in the same code:
+- HOME WIFI (now the default): the Pi joins the house wifi, phones on it
+  open http://pitv.local. The TV shows the address so people can find it.
+  The Pi also knows Dovi's hotspot, so it can be reached for help when
+  the house wifi is down, but it never leaves the house wifi for it.
+- OWN WIFI (the original): install with --own-wifi.
+Also new: "Add to Home Screen" gives a Photo TV icon that opens full
+screen like an app (no install button or download anywhere); wifis keep
+retrying forever instead of giving up after 4 tries; the own wifi works
+on 5 GHz with Pis that support it; and the Pi's own clock sync no longer
+gets caught by its popup DNS. The iPhone "Add" wait from Problem 7 stays
+the same on any wifi, because it happens inside the phone before anything
+is sent.
+
 Lessons
 -------
 - Test on the real hardware with real-size files. The Mac never showed

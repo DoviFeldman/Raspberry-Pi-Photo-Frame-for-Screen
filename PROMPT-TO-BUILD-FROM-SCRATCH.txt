@@ -9,14 +9,28 @@ Raspberry Pi OS Lite 32-bit (NetworkManager). Python 3 standard library
 plus Pillow from apt only (no pip). One plain HTML/JS page. systemd
 services. An install.sh and an update.sh.
 
+It has TWO network modes, chosen at install (sudo ./install.sh = home,
+sudo ./install.sh --own-wifi = own wifi), stored in config.json:
+- HOME (default): the Pi just joins the house wifi with NetworkManager
+  (house wifi priority 20, my phone hotspot priority 10 for setup and
+  troubleshooting; once on the house wifi it stays). Phones on that wifi
+  open http://pitv.local (avahi) or the IP. No access point, no captive
+  portal. The TV shows the address on the welcome screen and in a small
+  corner note for the first 3 minutes after boot.
+- OWN WIFI: everything in points 1 and 2 below.
+In both: "Add to Home Screen" must give a nice icon that opens full screen
+(manifest + apple-touch-icon + apple-mobile-web-app-capable), but NO
+install button anywhere (preventDefault on beforeinstallprompt). Plain
+http, so no service worker.
+
 What it must do:
-1. The Pi broadcasts its own open, visible wifi named "raspberry pi tv"
+1. (OWN WIFI mode) The Pi broadcasts its own open, visible wifi named "raspberry pi tv"
    (lowercase, no password) on a second virtual interface (uap0) of the
    same radio, with hostapd + dnsmasq. At the same time wlan0 stays a
    normal client that auto-joins saved networks (my phone hotspot) through
    NetworkManager. The Zero W has ONE 2.4 GHz radio, so the access point
    must always be moved to the hotspot's channel.
-2. Captive portal: dnsmasq answers every DNS name with the Pi's IP and
+2. (OWN WIFI mode) Captive portal: dnsmasq answers every DNS name with the Pi's IP and
    sends DHCP option 114, so joining the wifi pops up the upload page on
    iPhone and Android. Answer the OS connectivity checks with redirects,
    plus a "Stay connected" button after which that phone's checks get
@@ -47,7 +61,7 @@ What it must do:
    Support 16 and 32 bit framebuffers. Remember the current photo after
    every slide; after a reboot continue 5 photos BEFORE where it stopped,
    never from the beginning. New uploads show next. With no photos, show
-   a welcome screen explaining how to join the wifi. Keep HDMI on even
+   a welcome screen explaining how to reach the upload page. Keep HDMI on even
    if the TV is plugged in after boot; hide the console cursor and text.
 7. Password "laura" protects only viewing the photos (gallery with view,
    save, delete) and the settings page (add/remove wifis with nmcli from

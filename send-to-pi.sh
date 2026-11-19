@@ -2,7 +2,9 @@
 # Copies this folder to the Pi and runs the installer. You type the Pi's
 # password once; the other steps reuse that login.
 set -e
+# Usage: ./send-to-pi.sh [user@address] [--own-wifi]
 PI="${1:-raspberry@pitv.local}"
+MODE_ARG="${2:-}"
 O=(-o ControlMaster=auto -o ControlPath="$HOME/.ssh/cm-pitv" -o ControlPersist=30m)
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
@@ -13,4 +15,4 @@ echo "Copying the program…"
 COPYFILE_DISABLE=1 tar czf - -C "$HERE" --exclude .git --exclude .DS_Store . 2>/dev/null |
   ssh "${O[@]}" "$PI" 'rm -rf ~/PiPhotoTV && mkdir ~/PiPhotoTV && tar xzf - -C ~/PiPhotoTV 2>/dev/null'
 echo "Running the installer…"
-ssh "${O[@]}" -t "$PI" 'cd ~/PiPhotoTV && sudo ./install.sh'
+ssh "${O[@]}" -t "$PI" "cd ~/PiPhotoTV && sudo ./install.sh $MODE_ARG"

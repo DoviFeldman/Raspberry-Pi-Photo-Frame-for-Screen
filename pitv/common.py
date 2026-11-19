@@ -22,6 +22,30 @@ DEFAULTS = {
     "country": "US",
 }
 
+# Two ways to run it (set by install.sh, stored in config.json):
+#   "home"      the Pi joins the house wifi; phones on that wifi open
+#               http://pitv.local. No wifi of its own. (default for new installs)
+#   "own_wifi"  the Pi also makes its own open wifi "raspberry pi tv" with a
+#               popup page, for places that have no wifi.
+# Pis installed before modes existed have no setting and were own_wifi.
+HOME, OWN_WIFI = "home", "own_wifi"
+
+
+def network_mode(cfg=None):
+    mode = (cfg or load_config()).get("network_mode")
+    return HOME if mode == HOME else OWN_WIFI
+
+
+def wlan_ip():
+    """The Pi's address on the wifi it joined (house wifi or hotspot)."""
+    import subprocess
+    try:
+        out = subprocess.run(["ip", "-4", "-o", "addr", "show", "wlan0"], capture_output=True,
+                             text=True, timeout=5).stdout
+        return out.split("inet ")[1].split("/")[0] if "inet " in out else None
+    except (OSError, subprocess.TimeoutExpired, IndexError):
+        return None
+
 _lock = threading.Lock()
 
 

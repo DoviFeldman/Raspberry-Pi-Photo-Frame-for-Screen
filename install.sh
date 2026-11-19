@@ -1,7 +1,21 @@
 #!/bin/bash
 # Pi Photo TV installer. Run on the Pi (needs internet once, e.g. via your hotspot):
-#   sudo ./install.sh
+#   sudo ./install.sh              HOME WIFI version (default): the Pi joins the
+#                                  house wifi, phones there open http://pitv.local
+#   sudo ./install.sh --own-wifi   OWN WIFI version: the Pi also makes its own open
+#                                  wifi "raspberry pi tv" with a popup page, for
+#                                  places with no wifi
+# Running it again with the other choice switches versions (photos are kept).
 set -euo pipefail
+
+MODE=home
+for arg in "$@"; do
+  case "$arg" in
+    --own-wifi) MODE=own_wifi ;;
+    --home-wifi) MODE=home ;;
+    *) echo "Unknown option $arg (use --own-wifi or nothing)"; exit 1 ;;
+  esac
+done
 
 if [ "$(id -u)" != 0 ]; then echo "Please run with sudo:  sudo ./install.sh"; exit 1; fi
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -25,6 +39,17 @@ echo "==> Copying the app to $APP"
 mkdir -p "$APP" "$DATA"
 cp -r "$HERE/pitv/." "$APP/"
 cp "$HERE"/systemd/*.service /etc/systemd/system/
+python3 - "$DATA/config.json" "$MODE" <<'PY'
+import json, sys
+path, mode = sys.argv[1], sys.argv[2]
+try:
+    cfg = json.load(open(path))
+except (OSError, ValueError):
+    cfg = {}
+cfg["network_mode"] = mode
+json.dump(cfg, open(path, "w"))
+PY
+echo "    Version: $([ "$MODE" = home ] && echo 'home wifi' || echo 'own wifi (raspberry pi tv)')"
 
 echo "==> Wifi setup"
 mkdir -p /etc/NetworkManager/conf.d
@@ -40,24 +65,40 @@ if [ "$(hostname)" != "pitv" ]; then
   raspi-config nonint do_hostname pitv 2>/dev/null || hostnamectl set-hostname pitv
 fi
 
+save_wifi() {  # name, password, priority
+  nmcli connection delete id "$1" >/dev/null 2>&1 || true
+  if [ -n "$2" ]; then
+    nmcli connection add type wifi ifname wlan0 con-name "$1" ssid "$1" \
+      connection.autoconnect yes connection.autoconnect-priority "$3" connection.autoconnect-retries 0 \
+      wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$2" >/dev/null
+  else
+    nmcli connection add type wifi ifname wlan0 con-name "$1" ssid "$1" \
+      connection.autoconnect yes connection.autoconnect-priority "$3" connection.autoconnect-retries 0 >/dev/null
+  fi
+  echo "Saved \"$1\"."
+}
+
 echo
-echo "Which hotspot should the Pi join by itself? (it must be on 2.4 GHz —"
-echo "on iPhone turn on 'Maximize Compatibility'). Nearby wifis:"
+echo "Nearby wifis:"
 nmcli -t -f SSID device wifi list 2>/dev/null | sort -u | grep -v '^$' | sed 's/^/   /' || true
+if [ "$MODE" = home ]; then
+  echo "Which HOUSE wifi will the TV be on? (the wifi where the TV lives)"
+  read -r -p "House wifi name exactly as shown [press Enter to skip]: " SSID || SSID=""
+  if [ -n "$SSID" ]; then
+    read -r -s -p "House wifi password: " PSK || PSK=""; echo
+    save_wifi "$SSID" "$PSK" 20
+  fi
+fi
+echo "Which phone hotspot should the Pi also join by itself (for setup and help)?"
+if [ "$MODE" = own_wifi ]; then
+  echo "(On a Pi Zero it must be 2.4 GHz: on iPhone turn on 'Maximize Compatibility'.)"
+fi
 read -r -p "Hotspot name exactly as shown [press Enter to skip]: " SSID || SSID=""
 if [ -n "$SSID" ]; then
   read -r -s -p "Hotspot password: " PSK || PSK=""; echo
-  nmcli connection delete id "$SSID" >/dev/null 2>&1 || true
-  if [ -n "$PSK" ]; then
-    nmcli connection add type wifi ifname wlan0 con-name "$SSID" ssid "$SSID" \
-      connection.autoconnect yes connection.autoconnect-priority 10 \
-      wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$PSK" >/dev/null
-  else
-    nmcli connection add type wifi ifname wlan0 con-name "$SSID" ssid "$SSID" \
-      connection.autoconnect yes connection.autoconnect-priority 10 >/dev/null
-  fi
-  echo "Saved \"$SSID\". You can add more wifis later on the Settings page."
+  save_wifi "$SSID" "$PSK" 10
 fi
+echo "You can add more wifis later on the Settings page."
 
 echo "==> TV screen setup"
 BOOT=/boot/firmware; [ -d "$BOOT" ] || BOOT=/boot
@@ -83,6 +124,11 @@ systemctl enable pitv-net pitv-web pitv-slideshow
 # instead: everything comes up cleanly together.
 echo
 echo "All set! Restarting the Pi in 10 seconds to finish (about 2 minutes)."
-echo "Then on your phone join the wifi \"raspberry pi tv\" — a page pops up."
+if [ "$MODE" = home ]; then
+  echo "Then on a phone on the same wifi, open  http://pitv.local"
+  echo "(the TV also shows the address)."
+else
+  echo "Then on your phone join the wifi \"raspberry pi tv\" — a page pops up."
+fi
 sleep 10
 systemctl reboot

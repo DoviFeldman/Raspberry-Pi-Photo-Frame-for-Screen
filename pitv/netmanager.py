@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Runs the Pi's own open wifi ("raspberry pi tv") on a second virtual
+"""In "own_wifi" mode: runs the Pi's own open wifi ("raspberry pi tv") on a second virtual
 interface (uap0) while wlan0 stays free to join your hotspot.
 
 The Pi Zero W has one radio, so both have to share a channel: whenever wlan0
 joins a network, the access point is moved onto that network's channel.
 NetworkManager handles wlan0 (saved wifis, auto-connect); this handles uap0.
+
+In "home" mode there is no wifi of its own: this only keeps wifi power
+saving off (so the website answers quickly) and then sits idle.
 """
 import os
 import re
@@ -31,7 +34,8 @@ def log(*args):
 
 
 def sta_channel():
-    """Channel of the wifi wlan0 is connected to, or None."""
+    """Channel of the wifi wlan0 is connected to, or None. The access point
+    must use the same one: these Pis have a single radio."""
     _, out = sh("iw", "dev", STA, "link")
     m = re.search(r"freq: (\d+)", out)
     if not m:
@@ -41,7 +45,10 @@ def sta_channel():
         return 14
     if 2412 <= freq <= 2472:
         return (freq - 2407) // 5
-    return None  # 5 GHz: the Zero W can't do it, shouldn't happen
+    if 5160 <= freq <= 5885:
+        # 5 GHz (Pi 3A+/3B+/4/Zero 2 W... can do it; the Zero W can't).
+        return (freq - 5000) // 5
+    return None
 
 
 def ensure_ap_interface():
@@ -67,7 +74,7 @@ def write_hostapd_conf(channel):
             "ssid=" + cfg["ap_ssid"],
             "utf8_ssid=1",
             "country_code=" + cfg["country"],
-            "hw_mode=g",
+            "hw_mode=%s" % ("a" if channel > 14 else "g"),
             "channel=%d" % channel,
             "ieee80211n=1",
             "wmm_enabled=1",
@@ -86,6 +93,9 @@ def write_dnsmasq_conf():
         f.write("\n".join([
             "interface=" + AP,
             "bind-interfaces",
+            # Only answer phones on the TV wifi, never the Pi itself, or the
+            # Pi's own clock sync and updates would get pointed at itself.
+            "except-interface=lo",
             "listen-address=" + ip,
             "no-resolv",
             "no-hosts",
@@ -130,6 +140,14 @@ def main():
     common.ensure_dirs()
     sh("rfkill", "unblock", "wlan")
     sh("iw", "dev", STA, "set", "power_save", "off")
+
+    if common.network_mode() == common.HOME:
+        if os.path.exists("/sys/class/net/" + AP):
+            sh("iw", "dev", AP, "del")
+        log("home wifi mode: no wifi of our own, phones use the house wifi")
+        while True:
+            time.sleep(600)
+            sh("iw", "dev", STA, "set", "power_save", "off")  # NetworkManager can turn it back on
 
     # Give NetworkManager a moment to join the hotspot first, so the access
     # point starts on the right channel instead of restarting right away.

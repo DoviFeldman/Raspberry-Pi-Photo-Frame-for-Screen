@@ -4,10 +4,43 @@ GUIDE FOR AI AGENTS - install, use, update and debug Pi Photo TV
 Read this whole file before touching the Pi. The "Gotchas" section is
 there because each one already cost a debugging session.
 
+0. TWO VERSIONS (network modes) - check which one a Pi runs first
+-----------------------------------------------------------------
+One codebase, two modes, stored as "network_mode" in
+/var/lib/pitv/config.json (written by install.sh):
+  "home"      (default for new installs: sudo ./install.sh)
+              Pi joins the house wifi with NetworkManager; NO access point,
+              NO captive portal. pitv-net only turns wifi power saving off
+              and idles. Phones on the house wifi open http://pitv.local
+              (avahi) or the Pi's IP. The TV shows the address on the
+              welcome screen and, for 3 min after boot, in a corner over
+              the photos. Wifi priorities: house wifi 20, Dovi's hotspot
+              10, others 5. NetworkManager never roams away from a
+              connected network, so once on the house wifi it stays; the
+              hotspot is only joined when the house wifi isn't there
+              (setup/troubleshooting). All saved wifis have
+              autoconnect-retries 0 (retry forever).
+  "own_wifi"  (sudo ./install.sh --own-wifi) the original version below:
+              own open AP "raspberry pi tv" + captive popup, plus the
+              hotspot as a client. Hotspot priority 10, others 5.
+  Missing key = "own_wifi" (Pis installed before modes existed).
+  common.network_mode() reads it. Switch: re-run install.sh with/without
+  --own-wifi (keeps photos, reboots), or edit config.json and
+  systemctl restart pitv-net pitv-slideshow.
+  Git tag "own-wifi-v1" = the code before modes were added.
+
+Home-screen icon (both modes): web/manifest.webmanifest, icon-180/192/
+512.png, apple-mobile-web-app-* meta tags. No service worker (the site is
+plain http, where browsers don't allow one). The page calls
+preventDefault() on beforeinstallprompt so Chrome never shows an install
+bar; people use "Add to Home Screen" from the browser menu.
+
 1. WHAT IT IS
 -------------
 Hardware: Raspberry Pi Zero W (ARMv6, 1 core, 512 MB RAM, 2.4 GHz-only
-wifi with ONE radio), HDMI to a TV.
+wifi with ONE radio), HDMI to a TV. Also runs on a Pi 3 Model A+ (Laura's
+parents' TV, home mode, Nov 2026); 3A+ wifi does 5 GHz and the AP follows
+the hotspot onto a 5 GHz channel (hw_mode=a) in own_wifi mode.
 OS: Raspberry Pi OS Lite 32-bit (Debian 13 "trixie" base at the time of
 writing). Uses NetworkManager.
 Language: Python 3 standard library + Pillow (python3-pil from apt). No
@@ -31,7 +64,8 @@ Code (repo pitv/ -> installed to /opt/pitv/):
   slideshow.py   draws straight to /dev/fb0 (no X/Wayland). Handles 16/24/
                  32 bpp. Saves position after every photo, resumes 5
                  photos back on restart. New uploads jump the queue.
-  netmanager.py  creates virtual AP interface uap0 on the same radio as
+  netmanager.py  own_wifi mode only (home mode: power_save off, idle):
+                 creates virtual AP interface uap0 on the same radio as
                  wlan0, runs hostapd (open network "raspberry pi tv") and
                  dnsmasq (DHCP 192.168.4.10-250, DNS answers EVERY name
                  with 192.168.4.1, DHCP option 114 captive URL). Keeps the
@@ -44,7 +78,8 @@ Data on the Pi: /var/lib/pitv/
   thumbs/      gallery thumbnails
   incoming/    partial uploads (wiped at start)
   keys.json    "filename|size" -> photo id, used to skip duplicates
-  config.json  overrides: {"password","slide_seconds","ap_ssid","country"}
+  config.json  overrides: {"password","slide_seconds","ap_ssid","country",
+               "network_mode": "home" | "own_wifi"}
   slideshow_state.json   last photo shown
   secret       random value for the login cookie
 Photo ids are "<13-digit ms timestamp>-<6 hex>", so sorting = upload order.
@@ -84,15 +119,17 @@ Pi answer that client's probes with the real success responses.
 Flash Raspberry Pi OS Lite 32-bit with Raspberry Pi Imager; set hostname
 pitv, a user, the hotspot wifi (2.4 GHz!), wifi country, enable SSH.
 Then from a computer on the same network:
-    ./send-to-pi.sh <user>@pitv.local
+    ./send-to-pi.sh <user>@pitv.local              (home wifi version)
+    ./send-to-pi.sh <user>@pitv.local --own-wifi   (own wifi version)
 (It opens one SSH ControlMaster connection so the human types the
 password once, scp's this folder, runs sudo ./install.sh, which ends with
 a reboot.) Or manually: scp -r the folder, ssh in, cd, sudo ./install.sh.
 install.sh: apt installs python3-pil hostapd dnsmasq-base iw rfkill
 fonts-dejavu-core avahi-daemon libheif-examples; persistent journald
 (50 MB cap); disables stock hostapd/dnsmasq services; NetworkManager
-ignores uap0; sets wifi country; hostname pitv; asks for a hotspot to
-save; adds to cmdline.txt video=HDMI-A-1:1920x1080@60D consoleblank=0
+ignores uap0; sets wifi country; hostname pitv; writes network_mode to
+config.json; in home mode asks for the house wifi (priority 20); asks for
+a hotspot (priority 10) - stdin </dev/null skips both prompts; adds to cmdline.txt video=HDMI-A-1:1920x1080@60D consoleblank=0
 vt.global_cursor_default=0 logo.nologo quiet loglevel=3 (backup at
 cmdline.txt.before-pitv); disables getty@tty1; enables the 3 services.
 
@@ -158,7 +195,11 @@ Test locally on any computer (no Pi needed):
   and cancels the whole selection if one fails. Not fixable from the page
   (PhotoPickerPrefersOriginalImageFormat is an internal pref, default
   off; accept= doesn't change it). The page tells people ~20 at a time.
-- Phone hotspots must be 2.4 GHz; the Zero W can't see 5 GHz at all.
+- Phone hotspots must be 2.4 GHz for a Zero W; it can't see 5 GHz at all.
+- dnsmasq (own_wifi mode) must have except-interface=lo, or the Pi's own
+  lookups (timesyncd pool.ntp.org, apt) resolve to 192.168.4.1 and fail.
+- Saving wifis: never put real wifi passwords or the Pi login in this
+  repo (it's public). add-wifi.sh asks for the password interactively.
 - The AP must use the hotspot's channel (one radio). netmanager.py moves
   the AP when wlan0's channel changes, which drops AP clients briefly.
 - The kernel log says the forced video= mode is "not supported"; harmless,
