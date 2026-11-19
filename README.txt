@@ -5,8 +5,8 @@ Send photos from any iPhone or Android to a TV. No app, no account, no
 cloud. The Pi plugs into the TV with HDMI and plays all the photos as a
 slideshow, forever.
 
-TWO VERSIONS - pick one when you install
-----------------------------------------
+THREE VERSIONS - pick one when you install
+------------------------------------------
 Both are in this same folder; the installer asks for one or the other.
 You can switch later by running the installer again (photos are kept).
 
@@ -23,7 +23,17 @@ You can switch later by running the installer again (photos are kept).
        the page full screen, like an app. There's no install button or
        download anywhere.
 
-  2. OWN WIFI VERSION  (for a place with no wifi)
+  2. HOME WIFI + TAILSCALE VERSION  (family far away can add photos too)
+       sudo ./install.sh --tailscale
+     - Everything in the home wifi version, plus the Pi joins your free
+       private Tailscale network. People you share it with install the
+       Tailscale app once, and can then send photos from anywhere in the
+       world to its Tailscale address (like http://100.101.102.103).
+     - The Tailscale address is NOT shown on the TV (it only helps the
+       people far away); the installer tells you, and you pass it on.
+     - Already installed? Add it any time:  sudo ./tailscale-setup.sh
+
+  3. OWN WIFI VERSION  (for a place with no wifi)
        sudo ./install.sh --own-wifi
      - The Pi makes its own open wifi called "raspberry pi tv" (no
        password). Join it and the upload page pops up by itself.
@@ -62,6 +72,7 @@ install.sh       first-time install, run on the Pi:  sudo ./install.sh
 update.sh        update an installed Pi, run on the Pi:  sudo ./update.sh
 send-to-pi.sh    run on a Mac: copies this folder to the Pi and installs
                  ./send-to-pi.sh raspberry@pitv.local  [--own-wifi]
+tailscale-setup.sh  run on the Pi: adds Tailscale (version 2) to any install
 add-wifi.sh      run on the Pi: save another wifi without the website
                  sudo ./add-wifi.sh "Wifi name" [priority]
 pitv/            the program itself (Python + one web page)

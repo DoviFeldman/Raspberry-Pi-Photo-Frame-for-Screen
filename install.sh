@@ -5,15 +5,20 @@
 #   sudo ./install.sh --own-wifi   OWN WIFI version: the Pi also makes its own open
 #                                  wifi "raspberry pi tv" with a popup page, for
 #                                  places with no wifi
+#   sudo ./install.sh --tailscale  HOME WIFI + TAILSCALE: like home wifi, plus
+#                                  family far away can add photos through
+#                                  Tailscale (see tailscale-setup.sh)
 # Running it again with the other choice switches versions (photos are kept).
 set -euo pipefail
 
 MODE=home
+TAILSCALE=0
 for arg in "$@"; do
   case "$arg" in
     --own-wifi) MODE=own_wifi ;;
     --home-wifi) MODE=home ;;
-    *) echo "Unknown option $arg (use --own-wifi or nothing)"; exit 1 ;;
+    --tailscale) TAILSCALE=1 ;;
+    *) echo "Unknown option $arg (use --own-wifi, --tailscale or nothing)"; exit 1 ;;
   esac
 done
 
@@ -83,7 +88,9 @@ echo "Nearby wifis:"
 nmcli -t -f SSID device wifi list 2>/dev/null | sort -u | grep -v '^$' | sed 's/^/   /' || true
 if [ "$MODE" = home ]; then
   echo "Which HOUSE wifi will the TV be on? (the wifi where the TV lives)"
-  read -r -p "House wifi name exactly as shown [press Enter to skip]: " SSID || SSID=""
+  SSID="${PITV_HOUSE_WIFI:-}"
+  if [ -n "$SSID" ]; then echo "House wifi: $SSID"
+  else read -r -p "House wifi name exactly as shown [press Enter to skip]: " SSID || SSID=""; fi
   if [ -n "$SSID" ]; then
     read -r -s -p "House wifi password: " PSK || PSK=""; echo
     save_wifi "$SSID" "$PSK" 20
@@ -115,6 +122,11 @@ grep -q '^disable_splash=1' "$BOOT/config.txt" || echo 'disable_splash=1' >> "$B
 grep -q '^hdmi_force_hotplug=1' "$BOOT/config.txt" || echo 'hdmi_force_hotplug=1' >> "$BOOT/config.txt"
 # The login prompt would draw over the photos.
 systemctl disable getty@tty1 2>/dev/null || true
+
+if [ "$TAILSCALE" = 1 ]; then
+  echo "==> Tailscale (so family far away can add photos)"
+  "$HERE/tailscale-setup.sh" "${PITV_TS_NAME:-photo-tv}"
+fi
 
 echo "==> Turning on the services"
 systemctl daemon-reload

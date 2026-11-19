@@ -23,6 +23,15 @@ One codebase, two modes, stored as "network_mode" in
   "own_wifi"  (sudo ./install.sh --own-wifi) the original version below:
               own open AP "raspberry pi tv" + captive popup, plus the
               hotspot as a client. Hotspot priority 10, others 5.
+  Tailscale add-on (the "third version": home + Tailscale): install.sh
+              --tailscale or tailscale-setup.sh [name]. Installs from
+              tailscale.com, `tailscale up --hostname` (human logs in via
+              the printed URL), sets "tailscale": true in config.json. The
+              100.x address is deliberately NOT shown on the TV. Human
+              must disable key expiry and Share the machine with remote
+              family. In home mode server.is_our_host() accepts every Host
+              (so *.ts.net MagicDNS names work); own_wifi also accepts
+              *.ts.net.
   Missing key = "own_wifi" (Pis installed before modes existed).
   common.network_mode() reads it. Switch: re-run install.sh with/without
   --own-wifi (keeps photos, reboots), or edit config.json and

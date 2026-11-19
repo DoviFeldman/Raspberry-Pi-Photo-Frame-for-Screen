@@ -327,9 +327,12 @@ class Handler(BaseHTTPRequestHandler):
         return "pitv" in cookie and secrets.compare_digest(cookie["pitv"].value, auth_token())
 
     def is_our_host(self):
+        # Home wifi mode has no popup: every request is for us.
+        if common.network_mode() == common.HOME:
+            return True
         host = (self.headers.get("Host") or "").split(":")[0].lower()
         return (not host or re.match(r"^\d+\.\d+\.\d+\.\d+$", host) or host.endswith(".local")
-                or "." not in host)
+                or host.endswith(".ts.net") or "." not in host)
 
     # -- captive portal --
     def captive(self, path):

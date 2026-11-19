@@ -138,6 +138,17 @@ gets caught by its popup DNS. The iPhone "Add" wait from Problem 7 stays
 the same on any wifi, because it happens inside the phone before anything
 is sent.
 
+Version 3 (Nov 18) - home wifi + Tailscale
+------------------------------------------
+A second new Pi went to Dovi's parents in Chicago. Laura lives far from
+there and wanted to add photos too. So: the home wifi version plus
+Tailscale, a free private network. Laura's phone runs the Tailscale app,
+the Pi is shared with her, and the upload page opens at the Pi's
+Tailscale address from anywhere. The address isn't put on the TV; nobody
+in the house needs it. Two things to remember: turn off Tailscale key
+expiry for the Pi, or it quietly drops off after 6 months; and the page
+had to stop treating Tailscale's "*.ts.net" names as a popup check.
+
 Lessons
 -------
 - Test on the real hardware with real-size files. The Mac never showed

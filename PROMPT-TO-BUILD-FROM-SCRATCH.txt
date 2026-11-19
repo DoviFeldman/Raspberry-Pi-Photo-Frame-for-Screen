@@ -17,6 +17,10 @@ sudo ./install.sh --own-wifi = own wifi), stored in config.json:
   open http://pitv.local (avahi) or the IP. No access point, no captive
   portal. The TV shows the address on the welcome screen and in a small
   corner note for the first 3 minutes after boot.
+- HOME + TAILSCALE (install.sh --tailscale): home mode plus Tailscale
+  installed and logged in, so family far away (sharing the machine in
+  Tailscale) can upload from anywhere. Never show the Tailscale address
+  on the TV; print it at the end of the install.
 - OWN WIFI: everything in points 1 and 2 below.
 In both: "Add to Home Screen" must give a nice icon that opens full screen
 (manifest + apple-touch-icon + apple-mobile-web-app-capable), but NO

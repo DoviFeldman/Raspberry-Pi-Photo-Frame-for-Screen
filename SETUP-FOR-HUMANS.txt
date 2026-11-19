@@ -3,6 +3,7 @@ SETUP FOR HUMANS
 
 First, pick a version (see README.txt):
   HOME WIFI version  - the house where the TV is has wifi. (Most people.)
+  HOME WIFI + TAILSCALE - same, and family far away can send photos too.
   OWN WIFI version   - no wifi there; the Pi makes its own "raspberry pi tv".
 
 You need
@@ -46,7 +47,8 @@ Put the computer on the same hotspot. Then:
 
 Mac: open the Terminal app, drag the "send-to-pi.sh" file from this
 folder into the Terminal window, type a space, then type your username
-@pitv.local. For the OWN WIFI version add  --own-wifi  at the end.
+@pitv.local. For the OWN WIFI version add  --own-wifi  at the end, for
+the TAILSCALE version add  --tailscale  at the end.
 For example:
 
     /Users/you/PiPhotoTV/send-to-pi.sh raspberry@pitv.local
@@ -82,6 +84,19 @@ Step 4 - Use it: HOME WIFI version
    - iPhone: in Safari tap the Share button, then "Add to Home Screen".
    - Android: in Chrome tap the 3 dots menu, then "Add to Home screen".
    Add it from the pitv.local address if that one works on the phone.
+
+Step 4 - Extra for the TAILSCALE version
+----------------------------------------
+1. During the install a link appears. Open it and log in to your
+   Tailscale account (free, make one at tailscale.com). At the end the
+   installer prints the Pi's Tailscale address, like http://100.x.y.z
+2. At login.tailscale.com/admin/machines, on the Pi: "..." > "Disable key
+   expiry", or it stops working after 6 months.
+3. For each person far away: on the Pi click "..." > "Share", send them
+   the link. They install the Tailscale app, sign in, accept the share,
+   and turn Tailscale on.
+4. They open the Pi's Tailscale address in Safari or Chrome (with the
+   Tailscale app on) and send photos. "Add to Home Screen" works here too.
 
 Step 4 - Use it: OWN WIFI version
 ---------------------------------
